@@ -1,21 +1,20 @@
-# .goreleaser.yml
-project_name: gotempalter
+project_name: kubegraph
 
 builds:
-  - id: gotempalter
+  - id: kubegraph
     main: ./main.go
     goos:
       - linux
     goarch:
       - amd64
+      - arm64
+    binary: kubegraph
     ldflags:
       - -s -w
-    binary: gotempalter
 
 archives:
   - format: tar.gz
     files:
-      - gotempalter
       - LICENSE
       - README.md
 
