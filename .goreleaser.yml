@@ -12,16 +12,10 @@ builds:
     ldflags:
       - -s -w
 
-archives:
-  - format: tar.gz
-    files:
-      - LICENSE
-      - README.md
-
 checksum:
   name_template: 'checksums.txt'
 
 release:
   github:
-    owner: YOUR_GITHUB_USER
-    name: YOUR_REPO
+    owner: td4b
+    name: KubeGraph
