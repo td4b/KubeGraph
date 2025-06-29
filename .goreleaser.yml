@@ -1,0 +1,28 @@
+# .goreleaser.yml
+project_name: gotempalter
+
+builds:
+  - id: gotempalter
+    main: ./main.go
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+    binary: gotempalter
+
+archives:
+  - format: tar.gz
+    files:
+      - gotempalter
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+release:
+  github:
+    owner: YOUR_GITHUB_USER
+    name: YOUR_REPO

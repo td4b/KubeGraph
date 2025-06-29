@@ -1,0 +1,13 @@
+rules:
+  - match:
+      kind: Deployment
+      metadata:
+        annotations:
+          team: boo
+    inject:
+      metadata:
+        annotations:
+          injected: "true"
+    injectFile: "inject-file.yaml"
+    newResources:
+      - ./render/service.yaml
