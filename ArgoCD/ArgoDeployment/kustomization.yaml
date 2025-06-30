@@ -6,10 +6,18 @@ namespace: argocd
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
-    version: 5.53.0  # pin to stable
+    version: 8.1.2
     releaseName: argocd
     namespace: argocd
     valuesFile: argocd-values.yaml
-
 resources:
   - app.yaml
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/kustomize.buildOptions
+        value: --enable-helm
