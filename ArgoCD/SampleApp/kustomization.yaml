@@ -4,6 +4,13 @@ kind: Kustomization
 namespace: prom-stack
 
 helmCharts:
+  - name: kube-prometheus-stack-crds 
+    repo: https://wiremind.github.io/wiremind-helm-charts
+    version: 40.0.0
+    releaseName: prom-stack-crds
+    namespace: prom-stack
+    valuesFile: values.yaml
+
   - name: kube-prometheus-stack
     repo: https://prometheus-community.github.io/helm-charts
     version: 75.6.1
