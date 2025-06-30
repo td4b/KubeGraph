@@ -20,6 +20,7 @@ metadata:
   namespace: sample-app
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+    kubegraph: managed
 spec:
   rules:
     - host: nginx.example.com

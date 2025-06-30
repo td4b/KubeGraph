@@ -1,0 +1,15 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & metadata.name" }}-route
+  namespace: {{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & metadata.namespace" }}
+  kubegraph: managed
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & spec.rules.0.host" }}`) && PathPrefix(`/path`)
+      kind: Rule
+      services:
+        - name: {{ resource "kind.Deployment.metadata.name.nginx & metadata.name" }}-svc
+          port: 80

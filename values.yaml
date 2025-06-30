@@ -1,0 +1,2 @@
+middleware: nginx
+namespace: oauth

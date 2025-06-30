@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -21,7 +22,7 @@ type Rule struct {
 	Match        map[string]interface{} `yaml:"match"`
 	Inject       map[string]interface{} `yaml:"inject"`
 	InjectFile   string                 `yaml:"injectFile"`
-	NewResources []string               `yaml:"newResources"` // file paths
+	NewResources []string               `yaml:"newResources"`
 }
 
 type RulesFile struct {
@@ -30,59 +31,118 @@ type RulesFile struct {
 
 func resolveResource(resources []Resource, input string) interface{} {
 	parts := strings.Split(input, "&")
-	if len(parts) != 2 {
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+
+	switch len(parts) {
+	case 1:
+		panic(fmt.Sprintf("Invalid resource syntax: %s", input))
+
+	case 2:
+		left := parts[0]
+		right := parts[1]
+
+		leftParts := strings.Split(left, ".")
+		if len(leftParts) == 2 {
+			// Direct match: just pick first resource of that kind
+			kind := leftParts[1]
+			for _, res := range resources {
+				if strings.ToLower(res.Kind) != strings.ToLower(kind) {
+					continue
+				}
+				return walk(res.Data, strings.Split(right, "."))
+			}
+			return "<no match>"
+		}
+
+		// Classic filter
+		if len(leftParts) < 4 {
+			panic(fmt.Sprintf("Invalid left selector: %s", left))
+		}
+
+		kind := leftParts[1]
+		attrPath := strings.Join(leftParts[2:len(leftParts)-1], ".")
+		attrVal := leftParts[len(leftParts)-1]
+
+		for _, res := range resources {
+			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
+				continue
+			}
+
+			val := walk(res.Data, strings.Split(attrPath, "."))
+			if fmt.Sprintf("%v", val) == attrVal {
+				return walk(res.Data, strings.Split(right, "."))
+			}
+		}
+		return "<no match>"
+
+	case 3:
+		left := parts[0]
+		mapMatch := parts[1]
+		right := parts[2]
+
+		leftParts := strings.Split(left, ".")
+		if len(leftParts) < 3 {
+			panic(fmt.Sprintf("Invalid left selector: %s", left))
+		}
+
+		kind := leftParts[1]
+		attrPath := strings.Join(leftParts[2:], ".")
+
+		mapKV := strings.SplitN(mapMatch, ".", 2)
+		if len(mapKV) != 2 {
+			panic(fmt.Sprintf("Invalid map match: %s", mapMatch))
+		}
+		mapKey := mapKV[0]
+		mapVal := mapKV[1]
+
+		for _, res := range resources {
+			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
+				continue
+			}
+
+			val := walk(res.Data, strings.Split(attrPath, "."))
+			m, ok := val.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			foundVal, ok := m[mapKey]
+			if !ok || fmt.Sprintf("%v", foundVal) != mapVal {
+				continue
+			}
+
+			return walk(res.Data, strings.Split(right, "."))
+		}
+		return "<no match>"
+
+	default:
 		panic(fmt.Sprintf("Invalid resource syntax: %s", input))
 	}
-	left := strings.TrimSpace(parts[0])
-	right := strings.TrimSpace(parts[1])
+}
 
-	leftParts := strings.Split(left, ".")
-	if len(leftParts) < 4 {
-		panic(fmt.Sprintf("Invalid left resource selector: %s", left))
-	}
-
-	kind := leftParts[1]
-	attrPath := strings.Join(leftParts[2:len(leftParts)-1], ".")
-	attrVal := leftParts[len(leftParts)-1]
-
-	for _, res := range resources {
-		if strings.ToLower(res.Kind) != strings.ToLower(kind) {
-			continue
-		}
-
-		val := res.Data
-		segments := strings.Split(attrPath, ".")
-		for _, p := range segments {
-			v, ok := val[p]
+// walk safely walks a path with map/array support
+func walk(data interface{}, path []string) interface{} {
+	target := data
+	for _, p := range path {
+		switch node := target.(type) {
+		case map[string]interface{}:
+			v, ok := node[p]
 			if !ok {
-				val = nil
-				break
+				return fmt.Sprintf("<missing: %s>", p)
 			}
-			if m, ok := v.(map[string]interface{}); ok {
-				val = m
-			} else {
-				val = map[string]interface{}{p: v}
+			target = v
+		case []interface{}:
+			idx, err := strconv.Atoi(p)
+			if err != nil || idx < 0 || idx >= len(node) {
+				return fmt.Sprintf("<invalid index: %s>", p)
 			}
-		}
-
-		matchVal := val[segments[len(segments)-1]]
-		if fmt.Sprintf("%v", matchVal) == attrVal {
-			target := res.Data
-			for _, p := range strings.Split(right, ".") {
-				v, ok := target[p]
-				if !ok {
-					return fmt.Sprintf("<missing: %s>", p)
-				}
-				if m, ok := v.(map[string]interface{}); ok {
-					target = m
-				} else {
-					return v
-				}
-			}
+			target = node[idx]
+		default:
+			return fmt.Sprintf("<unexpected node at: %s>", p)
 		}
 	}
-
-	return "<no match>"
+	return target
 }
 
 func matches(actual, match map[string]interface{}) bool {
@@ -136,7 +196,6 @@ func mergeMaps(dst, src map[string]interface{}) map[string]interface{} {
 }
 
 func main() {
-	// Load optional values.yaml
 	valuesData, err := os.ReadFile("values.yaml")
 	if err != nil && !os.IsNotExist(err) {
 		panic(err)
@@ -150,7 +209,6 @@ func main() {
 		vars = map[string]interface{}{}
 	}
 
-	// Load rules.yaml
 	rulesRaw, _ := os.ReadFile("rules.yaml")
 	rulesTmpl, _ := template.New("rules").Funcs(sprig.TxtFuncMap()).Parse(string(rulesRaw))
 	var renderedRules bytes.Buffer
@@ -158,12 +216,10 @@ func main() {
 	var rules RulesFile
 	yaml.Unmarshal(renderedRules.Bytes(), &rules)
 
-	// Read stdin for base resources
 	stdin, _ := io.ReadAll(os.Stdin)
 	docs := strings.Split(string(stdin), "---")
 	resourceGraph := []Resource{}
 
-	// Build base graph
 	for _, doc := range docs {
 		doc = strings.TrimSpace(doc)
 		if doc == "" {
@@ -185,7 +241,6 @@ func main() {
 		})
 	}
 
-	// Apply rules
 	for i := range resourceGraph {
 		for _, rule := range rules.Rules {
 			if matches(resourceGraph[i].Data, rule.Match) {
@@ -194,8 +249,19 @@ func main() {
 				}
 				if rule.InjectFile != "" {
 					fileData, _ := os.ReadFile(rule.InjectFile)
+
+					injectTmpl, _ := template.New("injectFile").
+						Funcs(sprig.TxtFuncMap()).
+						Funcs(template.FuncMap{"resource": func(input string) interface{} {
+							return resolveResource(resourceGraph, input)
+						}}).Parse(string(fileData))
+
+					var renderedInject bytes.Buffer
+					injectTmpl.Execute(&renderedInject, map[string]interface{}{"var": vars})
+
 					var fileMap map[string]interface{}
-					yaml.Unmarshal(fileData, &fileMap)
+					yaml.Unmarshal(renderedInject.Bytes(), &fileMap)
+
 					resourceGraph[i].Data = mergeMaps(resourceGraph[i].Data, fileMap)
 				}
 
@@ -225,7 +291,6 @@ func main() {
 		}
 	}
 
-	// Output final
 	for _, res := range resourceGraph {
 		out, _ := yaml.Marshal(res.Data)
 		fmt.Printf("---\n%s", out)

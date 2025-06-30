@@ -1,0 +1,10 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & metadata.name" }}-middleware
+  namespace: {{ .var.namespace }}
+spec:
+  headers:
+    customRequestHeaders:
+      X-Auth-Request: "true"
+      X-Forwarded-Proto: "https"

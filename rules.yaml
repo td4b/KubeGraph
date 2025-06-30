@@ -1,13 +1,14 @@
 rules:
   - match:
-      kind: Deployment
+      kind: Ingress
       metadata:
         annotations:
-          team: boo
+          kubegraph: managed
     inject:
       metadata:
         annotations:
-          injected: "true"
+          kubegraphpatch: "applied"
     injectFile: "inject-file.yaml"
     newResources:
-      - ./render/service.yaml
+      - ./render/route.yaml
+      - ./render/middleware.yaml
