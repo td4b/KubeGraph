@@ -11,7 +11,7 @@ spec:
     path: ArgoCD/SampleApp
   destination:
     server: https://kubernetes.default.svc
-    namespace: prom-stack
+    namespace: sample-app
   syncPolicy:
     automated:
       prune: true

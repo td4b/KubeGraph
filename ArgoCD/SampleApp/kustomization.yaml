@@ -1,19 +1,22 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: prom-stack
+resources:
+  - deployment.yaml
+  - ingress.yaml
 
-helmCharts:
-  - name: kube-prometheus-stack-crds 
-    repo: https://wiremind.github.io/wiremind-helm-charts
-    version: 40.0.0
-    releaseName: prom-stack-crds
-    namespace: prom-stack
-    valuesFile: values.yaml
+# replace with a sample app to modify!!
+# helmCharts:
+#   - name: kube-prometheus-stack-crds 
+#     repo: https://wiremind.github.io/wiremind-helm-charts
+#     version: 40.0.0
+#     releaseName: prom-stack-crds
+#     namespace: prom-stack
+#     valuesFile: values.yaml
 
-  - name: kube-prometheus-stack
-    repo: https://prometheus-community.github.io/helm-charts
-    version: 75.6.1
-    releaseName: prom-stack
-    namespace: prom-stack
-    valuesFile: values.yaml
+#   - name: kube-prometheus-stack
+#     repo: https://prometheus-community.github.io/helm-charts
+#     version: 75.6.1
+#     releaseName: prom-stack
+#     namespace: prom-stack
+#     valuesFile: values.yaml
