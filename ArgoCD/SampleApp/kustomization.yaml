@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nginx
+
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    version: 75.6.1
+    releaseName: prom-stack
+    namespace: prom-stack
+    valuesFile: values.yaml
