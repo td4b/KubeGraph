@@ -35,9 +35,9 @@ jobs:
         with:
           version: latest
           args: release --clean
+          workdir: ./src  # ✅ ✅ ✅ THIS IS THE CORRECT FIELD!
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ./src
 
       # --- Build & push Docker image ---
 
