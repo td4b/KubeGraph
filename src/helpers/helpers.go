@@ -28,7 +28,7 @@ func Walk(data interface{}, path []string) interface{} {
 	return target
 }
 
-func Matches(actual interface{}, match interface{}) bool {
+func Matches(actual, match interface{}) bool {
 	actMap := toMap(actual)
 	matchMap := toMap(match)
 
@@ -37,14 +37,13 @@ func Matches(actual interface{}, match interface{}) bool {
 		if !ok {
 			return false
 		}
-
-		switch exp := expected.(type) {
+		switch expected.(type) {
 		case map[string]interface{}, map[interface{}]interface{}:
-			if !Matches(actVal, exp) {
+			if !Matches(actVal, expected) {
 				return false
 			}
 		default:
-			if fmt.Sprintf("%v", actVal) != fmt.Sprintf("%v", exp) {
+			if fmt.Sprintf("%v", actVal) != fmt.Sprintf("%v", expected) {
 				return false
 			}
 		}
@@ -57,26 +56,28 @@ func toMap(i interface{}) map[string]interface{} {
 	case map[string]interface{}:
 		return m
 	case map[interface{}]interface{}:
-		n := make(map[string]interface{})
+		out := make(map[string]interface{})
 		for k, v := range m {
-			n[fmt.Sprintf("%v", k)] = v
+			out[fmt.Sprintf("%v", k)] = v
 		}
-		return n
+		return out
 	default:
-		return nil
+		return map[string]interface{}{}
 	}
 }
 
 func MergeMaps(dst, src map[string]interface{}) map[string]interface{} {
 	for k, v := range src {
 		if existing, ok := dst[k]; ok {
+			srcMap := toMap(v)
+			dstMap := toMap(existing)
+
+			if len(srcMap) > 0 && len(dstMap) > 0 {
+				dst[k] = MergeMaps(dstMap, srcMap)
+				continue
+			}
+
 			switch srcVal := v.(type) {
-			case map[string]interface{}:
-				if dstVal, ok := existing.(map[string]interface{}); ok {
-					dst[k] = MergeMaps(dstVal, srcVal)
-				} else {
-					dst[k] = srcVal
-				}
 			case []interface{}:
 				if dstVal, ok := existing.([]interface{}); ok {
 					dst[k] = append(dstVal, srcVal...)

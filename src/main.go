@@ -8,38 +8,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
-	"github.com/spf13/cobra"
-
 	"github.com/Masterminds/sprig/v3"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-func main() {
-	var rulesPath string
-	var inputPath string
-
-	var rootCmd = &cobra.Command{
-		Use:   "kubegraph",
-		Short: "KubeGraph - Apply rules to Kubernetes YAML",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return Run(rulesPath, inputPath, os.Stdin, os.Stdout)
-		},
-	}
-
-	rootCmd.Flags().StringVar(&rulesPath, "rules", "", "Path to the rules.yaml file (required)")
-	rootCmd.Flags().StringVar(&inputPath, "input", "", "Input file or directory if stdin is empty")
-	rootCmd.MarkFlagRequired("rules")
-
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func Run(rulesPath string, inputPath string, stdin io.Reader, stdout io.Writer) error {
+func Run(rulesPath, inputPath string, in io.Reader, out io.Writer) error {
 	rulesDir := filepath.Dir(rulesPath)
 
 	valuesData, err := os.ReadFile("values.yaml")
@@ -62,41 +38,48 @@ func Run(rulesPath string, inputPath string, stdin io.Reader, stdout io.Writer) 
 	var rules models.RulesFile
 	yaml.Unmarshal(renderedRules.Bytes(), &rules)
 
-	var input []byte
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		input, _ = io.ReadAll(stdin)
-	} else if inputPath != "" {
-		input = loadInputFromPath(inputPath)
+	var stdin []byte
+	if in != nil {
+		stdin, _ = io.ReadAll(in)
 	} else {
-		input = loadInputFromPath(".")
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			stdin, _ = io.ReadAll(os.Stdin)
+		} else if inputPath != "" {
+			stdin = resolvers.LoadInputFromPath(inputPath)
+		} else {
+			stdin = resolvers.LoadInputFromPath(".")
+		}
 	}
 
-	resourceGraph := resolvers.BuildGraph(input, rulesDir, rules, vars)
+	resourceGraph := resolvers.BuildGraph(stdin, rulesDir, rules, vars)
 
 	for _, res := range resourceGraph {
-		out, _ := yaml.Marshal(res.Data)
-		fmt.Fprintf(stdout, "---\n%s", out)
+		y, _ := yaml.Marshal(res.Data)
+		fmt.Fprintf(out, "---\n%s", y)
 	}
 
 	return nil
 }
 
-func loadInputFromPath(path string) []byte {
-	var combined bytes.Buffer
-	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml") {
-			data, _ := os.ReadFile(p)
-			combined.Write(data)
-			combined.WriteString("\n---\n")
-		}
-		return nil
-	})
-	return combined.Bytes()
+func main() {
+	var rulesPath string
+	var inputPath string
+
+	var rootCmd = &cobra.Command{
+		Use:   "kubegraph",
+		Short: "KubeGraph - Apply rules to Kubernetes YAML",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return Run(rulesPath, inputPath, nil, os.Stdout)
+		},
+	}
+
+	rootCmd.Flags().StringVar(&rulesPath, "rules", "", "Path to the rules.yaml file (required)")
+	rootCmd.Flags().StringVar(&inputPath, "input", "", "Input file or directory if stdin is empty")
+	rootCmd.MarkFlagRequired("rules")
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

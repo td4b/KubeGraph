@@ -1,7 +1,7 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-route
+  name: "{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-route"
   namespace: foo
 spec:
   entryPoints:
