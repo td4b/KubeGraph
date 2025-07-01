@@ -9,7 +9,7 @@ spec:
       containers:
       - name: my-plugin
         command: [/var/run/argocd/argocd-cmp-server] # Entrypoint should be Argo CD lightweight CMP server i.e. argocd-cmp-server
-        image: ubuntu # This can be off-the-shelf or custom-built image
+        image: tdub17/kubegraph:v1.0.2
         securityContext:
           runAsNonRoot: true
           runAsUser: 999
@@ -32,3 +32,4 @@ spec:
         name: my-plugin-config
       - emptyDir: {}
         name: cmp-tmp
+        

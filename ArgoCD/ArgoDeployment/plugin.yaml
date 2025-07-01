@@ -12,26 +12,9 @@ data:
       namespace: argocd
     spec:
       version: v1.0.1
-      init:
-        command: [sh, -c]
-        args:
-          - |
-            echo "🔍 Downloading kubegraph..."
-            wget -q -O ./kubegraph.tar.gz https://github.com/td4b/KubeGraph/releases/download/v1.0.1/kubegraph_1.0.1_linux_amd64.tar.gz
-            echo "🔍 Verifying SHA256..."
-            echo "8a2c7ef0a83c231be60c4f15de704898ca39928a22f7481a08e1d1c7c74a0e84  kubegraph.tar.gz" | sha256sum -c -
-            echo "UnPacking"
-            tar -xvf kubegraph.tar.gz
-            chmod +x ./kubegraph
-            echo "🔍 Downloading kustomize..."
-            wget -q -O ./kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.0.3/kustomize_v5.0.3_linux_amd64.tar.gz
-            tar -xvf kustomize.tar.gz
-            chmod +x ./kustomize
-            echo "✅ Ready"
-
       generate:
         command: [sh, -c]
         args:
           - |
             echo "🔍 Running kustomize build | kubegraph..."
-            kustomize build ./ArgoCD/SampleApp | ./kubegraph
+            kustomize build ./ArgoCD/SampleApp | kubegraph

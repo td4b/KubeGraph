@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/td4b/KubeGraph.git
     targetRevision: main
-    path: .
+    path: ArgoCD/SampleApp
     plugin:
       name: kubegraph-v1.0.1
   destination:
