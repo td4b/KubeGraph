@@ -1,3 +1,3 @@
 metadata:
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.namespace" }}-{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-middleware@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .var.namespace }}-{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-middleware@kubernetescrd

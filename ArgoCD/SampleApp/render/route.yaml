@@ -2,13 +2,16 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-route
-  namespace: foo
+  namespace: {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.namespace" }}
 spec:
   entryPoints:
-    - web
+    - websecure
   routes:
-    - match: Host(`meow`) && PathPrefix(`/path`)
+    - match: Host(`{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & spec.rules.0.host" }}`) && PathPrefix(`/path`)
       kind: Rule
       services:
-        - name: bar-svc
+        - name: some-service
           port: 80
+  tls:
+    secretName:  {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & spec.tls.secretName" }}
+    

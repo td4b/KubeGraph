@@ -19,7 +19,9 @@ metadata:
   name: nginx-ingress
   namespace: sample-app
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # We add this to target this as a resource to build our graph from
     kubegraph: managed
 spec:
   rules:
@@ -33,3 +35,6 @@ spec:
                 name: nginx-service
                 port:
                   number: 80
+  tls:
+    secretName: nginx-tls
+    

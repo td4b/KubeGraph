@@ -15,12 +15,31 @@ func Walk(data interface{}, path []string) interface{} {
 				return fmt.Sprintf("<missing: %s>", p)
 			}
 			target = v
+
+		case map[interface{}]interface{}:
+			v, ok := node[p]
+			if !ok {
+				// Try matching by string conversion
+				for k, val := range node {
+					if fmt.Sprintf("%v", k) == p {
+						v = val
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					return fmt.Sprintf("<missing: %s>", p)
+				}
+			}
+			target = v
+
 		case []interface{}:
 			idx, err := strconv.Atoi(p)
 			if err != nil || idx < 0 || idx >= len(node) {
 				return fmt.Sprintf("<invalid index: %s>", p)
 			}
 			target = node[idx]
+
 		default:
 			return fmt.Sprintf("<unexpected node at: %s>", p)
 		}

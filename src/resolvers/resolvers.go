@@ -147,44 +147,36 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 	right := parts[1]
 
 	leftParts := strings.Split(left, ".")
-	if len(leftParts) == 2 {
-		// Direct: kind.Deployment & metadata.name
-		kind := leftParts[1]
-		for _, res := range resources {
-			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
-				continue
-			}
-			return helpers.Walk(res.Data, strings.Split(right, "."))
-		}
-		return "<no match>"
-	}
 
+	// Filter: must be at least kind.X.attr1.attr2...key.value
 	if len(leftParts) < 4 {
 		panic(fmt.Sprintf("Invalid left selector: %s", left))
 	}
 
-	// Filter: kind.Ingress.metadata.annotations.kubegraph.managed
 	kind := leftParts[1]
-	attrPath := strings.Join(leftParts[2:len(leftParts)-2], ".")
-	mapKey := leftParts[len(leftParts)-2]
 	mapVal := leftParts[len(leftParts)-1]
+	mapKey := leftParts[len(leftParts)-2]
+	attrPath := strings.Join(leftParts[2:len(leftParts)-2], ".")
 
 	for _, res := range resources {
-		if strings.ToLower(res.Kind) != strings.ToLower(kind) {
+		if !strings.EqualFold(res.Kind, kind) {
 			continue
 		}
 
 		val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
-		m, ok := val.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		foundVal, ok := m[mapKey]
-		if !ok || fmt.Sprintf("%v", foundVal) != mapVal {
-			continue
-		}
 
-		return helpers.Walk(res.Data, strings.Split(right, "."))
+		switch m := val.(type) {
+		case map[string]interface{}:
+			if v, ok := m[mapKey]; ok && fmt.Sprintf("%v", v) == mapVal {
+				return helpers.Walk(res.Data, strings.Split(right, "."))
+			}
+		case map[interface{}]interface{}:
+			for k, v := range m {
+				if fmt.Sprintf("%v", k) == mapKey && fmt.Sprintf("%v", v) == mapVal {
+					return helpers.Walk(res.Data, strings.Split(right, "."))
+				}
+			}
+		}
 	}
 
 	return "<no match>"
