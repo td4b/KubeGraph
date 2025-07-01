@@ -36,12 +36,12 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/kubegraph-plugin:${{ github.ref_name }} .
+          docker build -t ghcr.io/${{ github.actor }}/kubegraph-plugin:${{ github.ref_name }} .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/kubegraph-plugin:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.actor }}/kubegraph-plugin:${{ github.ref_name }}
