@@ -14,10 +14,12 @@ builds:
     hooks:
       post: 
         - |
+          bash -c '
           set -ex
           echo "Running unit test..."
-          kustomize build ../ArgoCD/SampleApp/tests/. | ./dist/kubegraph_linux_amd64_v1/kubegraph --rules ../ArgoCD/SampleApp/rules.yaml
+          kustomize build ../ArgoCD/SampleApp/tests/. | ./dist/kubegraph_linux_amd64/kubegraph --rules ../ArgoCD/SampleApp/rules.yaml
           echo "Done running unit test! Passed!"
+          '
 
 checksum:
   name_template: 'checksums.txt'
