@@ -7,9 +7,7 @@ RUN apk add --no-cache git
 WORKDIR /app
 
 # Copy your Go source
-COPY main.go main.go
-COPY go.mod go.mod
-COPY go.sum go.sum
+COPY ./src/. .
 
 # Build the binary
 RUN go mod tidy && \

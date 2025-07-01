@@ -34,8 +34,8 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           version: latest
-          args: release --clean
-          workdir: ./src  # ✅ ✅ ✅ THIS IS THE CORRECT FIELD!
+          args: release --clean --debug
+          workdir: ./src  
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
