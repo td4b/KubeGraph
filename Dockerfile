@@ -7,9 +7,9 @@ RUN apk add --no-cache git
 WORKDIR /app
 
 # Copy your Go source
-COPY ../main.go main.go
-COPY ../go.mod go.mod
-COPY ../go.sum go.sum
+COPY main.go main.go
+COPY go.mod go.mod
+COPY go.sum go.sum
 
 # Build the binary
 RUN go mod tidy && \
@@ -22,9 +22,11 @@ FROM alpine:3.19
 RUN apk add --no-cache wget curl tar bash coreutils
 
 # Download kustomize
-RUN wget -q -O /usr/local/bin/kustomize \
-  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.0.3/kustomize_v5.0.3_linux_amd64 && \
-  chmod +x /usr/local/bin/kustomize
+RUN wget -q https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.0/kustomize_v5.7.0_linux_amd64.tar.gz && \
+    tar -xzf kustomize_v5.7.0_linux_amd64.tar.gz && \
+    mv kustomize /usr/local/bin/kustomize && \
+    chmod +x /usr/local/bin/kustomize && \
+    rm kustomize_v5.7.0_linux_amd64.tar.gz
 
 # Copy the built kubegraph binary from builder stage
 COPY --from=builder /out/kubegraph /usr/local/bin/kubegraph
