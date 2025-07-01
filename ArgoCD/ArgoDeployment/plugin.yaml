@@ -16,5 +16,4 @@ data:
         command: [sh, -c]
         args:
           - |
-            echo "🔍 Running kustomize build | kubegraph..."
-            kustomize build ./ArgoCD/SampleApp | kubegraph
+            kustomize build . | kubegraph
