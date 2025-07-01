@@ -16,4 +16,6 @@ data:
         command: [sh, -c]
         args:
           - |
-            kustomize build . | kubegraph
+            # It's recommended here to distribute your rules and standard templates
+            # in the sidecar container 
+            kustomize build . | kubegraph --rules ./template/rules.yaml

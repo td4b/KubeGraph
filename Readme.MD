@@ -17,7 +17,7 @@ It renders Kubernetes YAML from templates, supporting:
   - Match resources
   - Inject new fields
   - Merge `inject-file.yaml` patches
-  - Attach **new** resource templates dynamically (like Services, ConfigMaps)
+  - Attach **new** resource templates dynamically (like Services, ConfigMaps, IngressRoutes)
 
 ✅ Output ready to pipe to `kubectl` or ArgoCD
 
@@ -41,16 +41,14 @@ It renders Kubernetes YAML from templates, supporting:
 
 ## 🏗️ Example
 
-**1️⃣ Base input: `deployment.yaml`**
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx
-  namespace: meow
-  annotations:
-    team: boo
-spec:
-  selector:
-    matchLabels:
-      app: nginx
+If you run `go test` you should be able to see how the examples work. 
+
+For references:
+https://github.com/td4b/KubeGraph/tree/main/ArgoCD/SampleApp
+
+Example usage would be something like:
+
+```bash
+cd ./src
+kustomize build ../ArgoCD/SampleApp/tests/. | go run main.go --rules ../ArgoCD/SampleApp/rules.yaml
+```
