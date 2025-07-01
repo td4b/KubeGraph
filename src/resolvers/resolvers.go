@@ -139,76 +139,55 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 		parts[i] = strings.TrimSpace(parts[i])
 	}
 
-	switch len(parts) {
-	case 1:
+	if len(parts) != 2 {
 		panic(fmt.Sprintf("Invalid resource syntax: %s", input))
+	}
 
-	case 2:
-		left := parts[0]
-		right := parts[1]
+	left := parts[0]
+	right := parts[1]
 
-		leftParts := strings.Split(left, ".")
-		if len(leftParts) == 2 {
-			kind := leftParts[1]
-			for _, res := range resources {
-				if strings.ToLower(res.Kind) != strings.ToLower(kind) {
-					continue
-				}
-				return helpers.Walk(res.Data, strings.Split(right, "."))
-			}
-			return "<no match>"
-		}
-
-		if len(leftParts) < 4 {
-			panic(fmt.Sprintf("Invalid left selector: %s", left))
-		}
-
+	leftParts := strings.Split(left, ".")
+	if len(leftParts) == 2 {
+		// Direct: kind.Deployment & metadata.name
 		kind := leftParts[1]
-		attrPath := strings.Join(leftParts[2:len(leftParts)-1], ".")
-		attrVal := leftParts[len(leftParts)-1]
-
 		for _, res := range resources {
 			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
 				continue
 			}
-
-			val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
-			if fmt.Sprintf("%v", val) == attrVal {
-				return helpers.Walk(res.Data, strings.Split(right, "."))
-			}
-		}
-		return "<no match>"
-
-	case 3:
-		left := parts[0]
-		expected := parts[1]
-		right := parts[2]
-
-		leftParts := strings.Split(left, ".")
-		if len(leftParts) < 2 {
-			panic(fmt.Sprintf("Invalid left selector: %s", left))
-		}
-
-		kind := leftParts[1]
-		attrPath := strings.Join(leftParts[2:], ".")
-
-		for _, res := range resources {
-			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
-				continue
-			}
-
-			val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
-			if fmt.Sprintf("%v", val) != expected {
-				continue
-			}
-
 			return helpers.Walk(res.Data, strings.Split(right, "."))
 		}
 		return "<no match>"
-
-	default:
-		panic(fmt.Sprintf("Invalid resource syntax: %s", input))
 	}
+
+	if len(leftParts) < 4 {
+		panic(fmt.Sprintf("Invalid left selector: %s", left))
+	}
+
+	// Filter: kind.Ingress.metadata.annotations.kubegraph.managed
+	kind := leftParts[1]
+	attrPath := strings.Join(leftParts[2:len(leftParts)-2], ".")
+	mapKey := leftParts[len(leftParts)-2]
+	mapVal := leftParts[len(leftParts)-1]
+
+	for _, res := range resources {
+		if strings.ToLower(res.Kind) != strings.ToLower(kind) {
+			continue
+		}
+
+		val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
+		m, ok := val.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		foundVal, ok := m[mapKey]
+		if !ok || fmt.Sprintf("%v", foundVal) != mapVal {
+			continue
+		}
+
+		return helpers.Walk(res.Data, strings.Split(right, "."))
+	}
+
+	return "<no match>"
 }
 
 func LoadInputFromPath(path string) []byte {
