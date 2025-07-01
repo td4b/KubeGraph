@@ -3,7 +3,6 @@ kind: IngressRoute
 metadata:
   name: {{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & metadata.name" }}-route
   namespace: {{ resource "kind.Ingress.metadata.annotations & kubegraph.managed & metadata.namespace" }}
-  kubegraph: managed
 spec:
   entryPoints:
     - web
