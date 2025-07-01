@@ -14,17 +14,41 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func BuildGraph(rulesDir string, rules models.RulesFile, vars map[string]interface{}, resourceGraph []models.Resource) []models.Resource {
+func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[string]interface{}) []models.Resource {
+
+	docs := strings.Split(string(input), "---")
+	resourceGraph := []models.Resource{}
+
+	for _, doc := range docs {
+		doc = strings.TrimSpace(doc)
+		if doc == "" {
+			continue
+		}
+		tmpl, _ := template.New("doc").Funcs(sprig.TxtFuncMap()).
+			Funcs(template.FuncMap{"resource": func(input string) interface{} {
+				return ResolveResource(resourceGraph, input)
+			}}).Parse(doc)
+		var buf bytes.Buffer
+		tmpl.Execute(&buf, map[string]interface{}{"var": vars})
+
+		var parsed map[string]interface{}
+		yaml.Unmarshal(buf.Bytes(), &parsed)
+
+		resourceGraph = append(resourceGraph, models.Resource{
+			Kind: parsed["kind"].(string),
+			Data: parsed,
+		})
+	}
 
 	for i := range resourceGraph {
 		for _, rule := range rules.Rules {
+
 			if helpers.Matches(resourceGraph[i].Data, rule.Match) {
 				if rule.Inject != nil {
 					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, rule.Inject)
 				}
 				if rule.InjectFile != "" {
-					injectFilePath := filepath.Join(rulesDir, rule.InjectFile)
-					fileData, _ := os.ReadFile(injectFilePath)
+					fileData, _ := os.ReadFile(rule.InjectFile)
 
 					injectTmpl, _ := template.New("injectFile").
 						Funcs(sprig.TxtFuncMap()).
@@ -39,6 +63,7 @@ func BuildGraph(rulesDir string, rules models.RulesFile, vars map[string]interfa
 					yaml.Unmarshal(renderedInject.Bytes(), &fileMap)
 
 					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, fileMap)
+
 				}
 
 				for _, newPath := range rule.NewResources {

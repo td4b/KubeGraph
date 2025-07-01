@@ -24,54 +24,8 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "kubegraph",
 		Short: "KubeGraph - Apply rules to Kubernetes YAML",
-		Run: func(cmd *cobra.Command, args []string) {
-
-			// Rules dir
-			rulesDir := filepath.Dir(rulesPath)
-
-			// Load values.yaml
-			valuesData, err := os.ReadFile("values.yaml")
-			if err != nil && !os.IsNotExist(err) {
-				panic(err)
-			}
-			var vars map[string]interface{}
-			if len(valuesData) > 0 {
-				if err := yaml.Unmarshal(valuesData, &vars); err != nil {
-					panic(err)
-				}
-			} else {
-				vars = map[string]interface{}{}
-			}
-
-			// Load & render rules
-			rulesRaw, _ := os.ReadFile(rulesPath)
-			rulesTmpl, _ := template.New("rules").Funcs(sprig.TxtFuncMap()).Parse(string(rulesRaw))
-			var renderedRules bytes.Buffer
-			rulesTmpl.Execute(&renderedRules, map[string]interface{}{"var": vars})
-			var rules models.RulesFile
-			yaml.Unmarshal(renderedRules.Bytes(), &rules)
-
-			// Load stdin or fallback
-			stat, _ := os.Stdin.Stat()
-			var stdin []byte
-			if (stat.Mode() & os.ModeCharDevice) == 0 {
-				stdin, _ = io.ReadAll(os.Stdin)
-			} else if inputPath != "" {
-				stdin = loadInputFromPath(inputPath)
-			} else {
-				stdin = loadInputFromPath(".")
-			}
-
-			docs := strings.Split(string(stdin), "---")
-			resourceGraph := []models.Resource{}
-
-			resourceGraph = resolvers.BuildGraph(rulesDir, rules, vars, resourceGraph)
-			resourceGraph = resolvers.HandleInputs(docs, resourceGraph, vars)
-
-			for _, res := range resourceGraph {
-				out, _ := yaml.Marshal(res.Data)
-				fmt.Printf("---\n%s", out)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return Run(rulesPath, inputPath, os.Stdin, os.Stdout)
 		},
 	}
 
@@ -83,6 +37,49 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func Run(rulesPath string, inputPath string, stdin io.Reader, stdout io.Writer) error {
+	rulesDir := filepath.Dir(rulesPath)
+
+	valuesData, err := os.ReadFile("values.yaml")
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	var vars map[string]interface{}
+	if len(valuesData) > 0 {
+		if err := yaml.Unmarshal(valuesData, &vars); err != nil {
+			return err
+		}
+	} else {
+		vars = map[string]interface{}{}
+	}
+
+	rulesRaw, _ := os.ReadFile(rulesPath)
+	rulesTmpl, _ := template.New("rules").Funcs(sprig.TxtFuncMap()).Parse(string(rulesRaw))
+	var renderedRules bytes.Buffer
+	rulesTmpl.Execute(&renderedRules, map[string]interface{}{"var": vars})
+	var rules models.RulesFile
+	yaml.Unmarshal(renderedRules.Bytes(), &rules)
+
+	var input []byte
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		input, _ = io.ReadAll(stdin)
+	} else if inputPath != "" {
+		input = loadInputFromPath(inputPath)
+	} else {
+		input = loadInputFromPath(".")
+	}
+
+	resourceGraph := resolvers.BuildGraph(input, rulesDir, rules, vars)
+
+	for _, res := range resourceGraph {
+		out, _ := yaml.Marshal(res.Data)
+		fmt.Fprintf(stdout, "---\n%s", out)
+	}
+
+	return nil
 }
 
 func loadInputFromPath(path string) []byte {

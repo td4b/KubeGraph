@@ -30,6 +30,10 @@ jobs:
           sudo mv kustomize /usr/local/bin/
           kustomize version
 
+      - name: Run Go tests
+        run: |
+          go test ./src  
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:

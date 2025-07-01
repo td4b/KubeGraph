@@ -28,19 +28,19 @@ func Walk(data interface{}, path []string) interface{} {
 	return target
 }
 
-func Matches(actual, match map[string]interface{}) bool {
-	for key, expected := range match {
-		actVal, ok := actual[key]
+func Matches(actual interface{}, match interface{}) bool {
+	actMap := toMap(actual)
+	matchMap := toMap(match)
+
+	for key, expected := range matchMap {
+		actVal, ok := actMap[key]
 		if !ok {
 			return false
 		}
+
 		switch exp := expected.(type) {
-		case map[string]interface{}:
-			actMap, ok := actVal.(map[string]interface{})
-			if !ok {
-				return false
-			}
-			if !Matches(actMap, exp) {
+		case map[string]interface{}, map[interface{}]interface{}:
+			if !Matches(actVal, exp) {
 				return false
 			}
 		default:
@@ -50,6 +50,21 @@ func Matches(actual, match map[string]interface{}) bool {
 		}
 	}
 	return true
+}
+
+func toMap(i interface{}) map[string]interface{} {
+	switch m := i.(type) {
+	case map[string]interface{}:
+		return m
+	case map[interface{}]interface{}:
+		n := make(map[string]interface{})
+		for k, v := range m {
+			n[fmt.Sprintf("%v", k)] = v
+		}
+		return n
+	default:
+		return nil
+	}
 }
 
 func MergeMaps(dst, src map[string]interface{}) map[string]interface{} {
