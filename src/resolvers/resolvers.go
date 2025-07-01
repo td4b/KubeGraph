@@ -15,18 +15,17 @@ import (
 )
 
 func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[string]interface{}) []models.Resource {
-
-	docs := strings.Split(string(input), "---")
+	docs := bytes.Split(input, []byte("---"))
 	resourceGraph := []models.Resource{}
 
-	// Phase 1: Just parse raw YAML docs
+	// Phase 1: parse base docs
 	for _, doc := range docs {
-		doc = strings.TrimSpace(doc)
-		if doc == "" {
+		doc = bytes.TrimSpace(doc)
+		if len(doc) == 0 {
 			continue
 		}
 		var parsed map[string]interface{}
-		yaml.Unmarshal([]byte(doc), &parsed)
+		yaml.Unmarshal(doc, &parsed)
 
 		kindRaw := parsed["kind"]
 		kindStr, ok := kindRaw.(string)
@@ -40,37 +39,17 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 		})
 	}
 
-	for i := range resourceGraph {
+	// Phase 2: match and mutate graph until stable
+	i := 0
+	for i < len(resourceGraph) {
 		for _, rule := range rules.Rules {
 			if helpers.Matches(resourceGraph[i].Data, rule.Match) {
-				// If you want to inject inline blocks
+				// ✅ 1️⃣ inject inline
 				if rule.Inject != nil {
 					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, rule.Inject)
 				}
 
-				// If you want to inject from a file
-				if rule.InjectFile != "" {
-					injectFilePath := filepath.Join(rulesDir, rule.InjectFile)
-					fileData, _ := os.ReadFile(injectFilePath)
-
-					injectTmpl, _ := template.New("injectFile").
-						Funcs(sprig.TxtFuncMap()).
-						Funcs(template.FuncMap{
-							"resource": func(input string) interface{} {
-								return ResolveResource(resourceGraph, input)
-							},
-						}).Parse(string(fileData))
-
-					var renderedInject bytes.Buffer
-					injectTmpl.Execute(&renderedInject, map[string]interface{}{"var": vars})
-
-					var fileMap map[string]interface{}
-					yaml.Unmarshal(renderedInject.Bytes(), &fileMap)
-
-					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, fileMap)
-				}
-
-				// Handle new resources
+				// ✅ 2️⃣ handle newResources (before InjectFile)
 				for _, newPath := range rule.NewResources {
 					newResourcePath := filepath.Join(rulesDir, newPath)
 					rawNew, _ := os.ReadFile(newResourcePath)
@@ -92,10 +71,7 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 					kindRaw := newParsed["kind"]
 					kindStr, ok := kindRaw.(string)
 					if !ok || kindStr == "" {
-						panic(fmt.Sprintf(
-							"[ERROR] Rendered newResource is missing kind!\nFinal YAML:\n%s",
-							buf.String(),
-						))
+						panic(fmt.Sprintf("[ERROR] Rendered newResource is missing kind!\nYAML:\n%s", buf.String()))
 					}
 
 					resourceGraph = append(resourceGraph, models.Resource{
@@ -103,9 +79,33 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 						Data: newParsed,
 					})
 				}
+
+				// ✅ 3️⃣ inject file AFTER newResources are in graph
+				if rule.InjectFile != "" {
+					injectFilePath := filepath.Join(rulesDir, rule.InjectFile)
+					fileData, _ := os.ReadFile(injectFilePath)
+
+					injectTmpl, _ := template.New("injectFile").
+						Funcs(sprig.TxtFuncMap()).
+						Funcs(template.FuncMap{
+							"resource": func(input string) interface{} {
+								return ResolveResource(resourceGraph, input)
+							},
+						}).Parse(string(fileData))
+
+					var renderedInject bytes.Buffer
+					injectTmpl.Execute(&renderedInject, map[string]interface{}{"var": vars})
+
+					var fileMap map[string]interface{}
+					yaml.Unmarshal(renderedInject.Bytes(), &fileMap)
+
+					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, fileMap)
+				}
 			}
 		}
+		i++
 	}
+
 	return resourceGraph
 }
 
@@ -134,7 +134,6 @@ func HandleInputs(docs []string, resourceGraph []models.Resource, vars map[strin
 }
 
 func ResolveResource(resources []models.Resource, input string) interface{} {
-
 	parts := strings.Split(input, "&")
 	for i := range parts {
 		parts[i] = strings.TrimSpace(parts[i])
@@ -148,7 +147,7 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 		left := parts[0]
 		right := parts[1]
 
-		leftParts := strings.Split(strings.TrimSpace(left), ".")
+		leftParts := strings.Split(left, ".")
 		if len(leftParts) == 2 {
 			kind := leftParts[1]
 			for _, res := range resources {
@@ -166,7 +165,7 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 
 		kind := leftParts[1]
 		attrPath := strings.Join(leftParts[2:len(leftParts)-1], ".")
-		attrVal := strings.TrimSpace(leftParts[len(leftParts)-1])
+		attrVal := leftParts[len(leftParts)-1]
 
 		for _, res := range resources {
 			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
@@ -175,31 +174,23 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 
 			val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
 			if fmt.Sprintf("%v", val) == attrVal {
-				out := helpers.Walk(res.Data, strings.Split(right, "."))
-				return out
+				return helpers.Walk(res.Data, strings.Split(right, "."))
 			}
 		}
 		return "<no match>"
 
 	case 3:
 		left := parts[0]
-		mapMatch := parts[1]
+		expected := parts[1]
 		right := parts[2]
 
 		leftParts := strings.Split(left, ".")
-		if len(leftParts) < 3 {
+		if len(leftParts) < 2 {
 			panic(fmt.Sprintf("Invalid left selector: %s", left))
 		}
 
 		kind := leftParts[1]
 		attrPath := strings.Join(leftParts[2:], ".")
-
-		mapKV := strings.SplitN(mapMatch, ".", 2)
-		if len(mapKV) != 2 {
-			panic(fmt.Sprintf("Invalid map match: %s", mapMatch))
-		}
-		mapKey := mapKV[0]
-		mapVal := mapKV[1]
 
 		for _, res := range resources {
 			if strings.ToLower(res.Kind) != strings.ToLower(kind) {
@@ -207,17 +198,7 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 			}
 
 			val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
-
-			m, ok := val.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			foundVal, ok := m[mapKey]
-			if !ok {
-				continue
-			}
-
-			if fmt.Sprintf("%v", foundVal) != mapVal {
+			if fmt.Sprintf("%v", val) != expected {
 				continue
 			}
 

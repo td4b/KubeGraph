@@ -18,9 +18,14 @@ import (
 func Run(rulesPath, inputPath string, in io.Reader, out io.Writer) error {
 	rulesDir := filepath.Dir(rulesPath)
 
-	valuesData, err := os.ReadFile("values.yaml")
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	valuesPath := filepath.Join(rulesDir, "values.yaml")
+	valuesData, err := os.ReadFile(valuesPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			//fmt.Println("[WARN] No values.yaml found!")
+		} else {
+			panic(err)
+		}
 	}
 	var vars map[string]interface{}
 	if len(valuesData) > 0 {

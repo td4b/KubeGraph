@@ -2,10 +2,9 @@
 
 **KubeGraph** is a simple **Terraform-style graph-aware YAML templating tool** for Kubernetes.  
 It renders Kubernetes YAML from templates, supporting:
-- `{{ var.* }}` style variables
+- `{{ var.* }}` style variables for direct template injection
 - `{{ resource "kind.Deployment.metadata.name.myapp & spec.selector.matchLabels" }}` style cross-resource lookups
-- Smart graph linking like Terraform’s `depends_on`
-- Dry-run planning (`kubectl apply --dry-run=server`)
+- `"{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}"` annotation value lookups
 - Integration as an ArgoCD **Custom CMP**
 
 ---
