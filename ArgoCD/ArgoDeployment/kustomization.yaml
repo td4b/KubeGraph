@@ -10,14 +10,11 @@ helmCharts:
     releaseName: argocd
     namespace: argocd
     valuesFile: argocd-values.yaml
+
 resources:
   - app.yaml
+  - plugin.yaml
 
 patches:
-  - target:
-      kind: ConfigMap
-      name: argocd-cm
-    patch: |-
-      - op: add
-        path: /data/kustomize.buildOptions
-        value: --enable-helm
+  - path: ./patches/patch-repo-server.yaml
+
