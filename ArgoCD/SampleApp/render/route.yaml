@@ -12,3 +12,4 @@ spec:
       services:
         - name: {{ resource "kind.Deployment.metadata.name.nginx & metadata.name" }}-svc
           port: 80
+          
