@@ -9,6 +9,7 @@ jobs:
   release:
     name: Build & Publish kubegraph Release
     runs-on: ubuntu-latest
+    environment: Deployment
 
     permissions:
       contents: write
