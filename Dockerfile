@@ -1,5 +1,5 @@
 # ---- Build kubegraph binary ----
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24.4-alpine AS builder
 
 # Optional: install git if you need modules
 RUN apk add --no-cache git
