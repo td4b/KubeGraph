@@ -28,7 +28,7 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # --- Build & push Docker image ---
       - name: Log in to Docker registry
@@ -36,7 +36,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.DEPLOY_TOKEN }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build Docker image
         run: |
