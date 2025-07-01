@@ -31,17 +31,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # --- Build & push Docker image ---
+      
       - name: Log in to Docker registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: tdub17
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.actor }}/kubegraph-plugin:${{ github.ref_name }} .
+         docker build -t tdub17/kubegraph:${{ github.ref_name }} .
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.actor }}/kubegraph-plugin:${{ github.ref_name }}
+          docker push tdub17/kubegraph:${{ github.ref_name }}
