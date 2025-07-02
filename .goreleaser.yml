@@ -2,7 +2,7 @@ project_name: kubegraph
 
 builds:
   - id: kubegraph
-    main: main.go
+    main: ./cmd/kubegraph/main.go
     goos:
       - linux
     goarch:
