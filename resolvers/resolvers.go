@@ -11,7 +11,7 @@ import (
 	"github.com/td4b/KubeGraph/helpers"
 	"github.com/td4b/KubeGraph/models"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"gopkg.in/yaml.v2"
 )
 
