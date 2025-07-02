@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/td4b/KubeGraph/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,23 +66,18 @@ func TestKubeGraph(t *testing.T) {
 	fmt.Println(renderedRules.String())
 
 	// 🟢 Also parse rules to check for injectFile and newResources
-	var rules struct {
-		Rules []struct {
-			InjectFile   string   `yaml:"injectFile"`
-			NewResources []string `yaml:"newResources"`
-		} `yaml:"rules"`
-	}
-	if err := yaml.Unmarshal(renderedRules.Bytes(), &rules); err != nil {
+	var rulesFile models.RulesFile
+	if err := yaml.Unmarshal(renderedRules.Bytes(), &rulesFile); err != nil {
 		t.Fatalf("failed to unmarshal rendered rules: %v", err)
 	}
 
 	// 🟢 If injectFile is defined, print its raw contents
-	for _, rule := range rules.Rules {
-		if rule.InjectFile != "" {
-			fmt.Println("====== RAW injectFile:", rule.InjectFile, "======")
-			data, err := os.ReadFile("../ArgoCD/SampleApp/" + rule.InjectFile)
+	for _, rule := range rulesFile.Rules {
+		if rule.Patches != "" {
+			fmt.Println("====== RAW patches:", rule.Patches, "======")
+			data, err := os.ReadFile("../ArgoCD/SampleApp/" + rule.Patches)
 			if err != nil {
-				t.Fatalf("failed to read injectFile %s: %v", rule.InjectFile, err)
+				t.Fatalf("failed to read injectFile %s: %v", rule.Patches, err)
 			}
 			fmt.Println(string(data))
 		}
