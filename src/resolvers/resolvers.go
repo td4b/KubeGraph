@@ -25,12 +25,14 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 			continue
 		}
 		var parsed map[string]interface{}
-		yaml.Unmarshal(doc, &parsed)
+		if err := yaml.Unmarshal(doc, &parsed); err != nil {
+			panic(fmt.Sprintf("[ERROR] Failed to parse base doc YAML:\n%s\nErr: %v", doc, err))
+		}
 
 		kindRaw := parsed["kind"]
 		kindStr, ok := kindRaw.(string)
-		if !ok {
-			panic(fmt.Sprintf("Resource is missing kind! Raw: %#v", parsed))
+		if !ok || kindStr == "" {
+			panic(fmt.Sprintf("[ERROR] Resource is missing kind! Raw: %#v", parsed))
 		}
 
 		resourceGraph = append(resourceGraph, models.Resource{
@@ -49,7 +51,7 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, rule.Inject)
 				}
 
-				// ✅ 2️⃣ handle newResources (before InjectFile)
+				// ✅ 2️⃣ handle newResources — supports multiple docs
 				for _, newPath := range rule.NewResources {
 					newResourcePath := filepath.Join(rulesDir, newPath)
 					rawNew, _ := os.ReadFile(newResourcePath)
@@ -65,22 +67,33 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 					var buf bytes.Buffer
 					newTmpl.Execute(&buf, map[string]interface{}{"var": vars})
 
-					var newParsed map[string]interface{}
-					yaml.Unmarshal(buf.Bytes(), &newParsed)
+					// Split into multiple YAML docs if needed
+					docs := bytes.Split(buf.Bytes(), []byte("---"))
+					for _, doc := range docs {
+						doc = bytes.TrimSpace(doc)
+						if len(doc) == 0 {
+							continue
+						}
 
-					kindRaw := newParsed["kind"]
-					kindStr, ok := kindRaw.(string)
-					if !ok || kindStr == "" {
-						panic(fmt.Sprintf("[ERROR] Rendered newResource is missing kind!\nYAML:\n%s", buf.String()))
+						var newParsed map[string]interface{}
+						if err := yaml.Unmarshal(doc, &newParsed); err != nil {
+							panic(fmt.Sprintf("[ERROR] Failed to parse newResource YAML:\n%s\nErr: %v", doc, err))
+						}
+
+						kindRaw := newParsed["kind"]
+						kindStr, ok := kindRaw.(string)
+						if !ok || kindStr == "" {
+							panic(fmt.Sprintf("[ERROR] Rendered newResource is missing kind!\nYAML:\n%s", doc))
+						}
+
+						resourceGraph = append(resourceGraph, models.Resource{
+							Kind: kindStr,
+							Data: newParsed,
+						})
 					}
-
-					resourceGraph = append(resourceGraph, models.Resource{
-						Kind: kindStr,
-						Data: newParsed,
-					})
 				}
 
-				// ✅ 3️⃣ inject file AFTER newResources are in graph
+				// ✅ 3️⃣ inject file AFTER newResources
 				if rule.InjectFile != "" {
 					injectFilePath := filepath.Join(rulesDir, rule.InjectFile)
 					fileData, _ := os.ReadFile(injectFilePath)
@@ -97,7 +110,9 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 					injectTmpl.Execute(&renderedInject, map[string]interface{}{"var": vars})
 
 					var fileMap map[string]interface{}
-					yaml.Unmarshal(renderedInject.Bytes(), &fileMap)
+					if err := yaml.Unmarshal(renderedInject.Bytes(), &fileMap); err != nil {
+						panic(fmt.Sprintf("[ERROR] Failed to parse InjectFile YAML:\n%s\nErr: %v", renderedInject.String(), err))
+					}
 
 					resourceGraph[i].Data = helpers.MergeMaps(resourceGraph[i].Data, fileMap)
 				}
@@ -123,10 +138,18 @@ func HandleInputs(docs []string, resourceGraph []models.Resource, vars map[strin
 		tmpl.Execute(&buf, map[string]interface{}{"var": vars})
 
 		var parsed map[string]interface{}
-		yaml.Unmarshal(buf.Bytes(), &parsed)
+		if err := yaml.Unmarshal(buf.Bytes(), &parsed); err != nil {
+			panic(fmt.Sprintf("[ERROR] Failed to parse input YAML:\n%s\nErr: %v", buf.String(), err))
+		}
+
+		kindRaw := parsed["kind"]
+		kindStr, ok := kindRaw.(string)
+		if !ok || kindStr == "" {
+			panic(fmt.Sprintf("[ERROR] Input YAML is missing kind:\n%s", buf.String()))
+		}
 
 		resourceGraph = append(resourceGraph, models.Resource{
-			Kind: parsed["kind"].(string),
+			Kind: kindStr,
 			Data: parsed,
 		})
 	}
@@ -148,7 +171,7 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 
 	leftParts := strings.Split(left, ".")
 
-	// Filter: must be at least kind.X.attr1.attr2...key.value
+	// Filter: kind.Ingress.metadata.annotations.kubegraph.managed
 	if len(leftParts) < 4 {
 		panic(fmt.Sprintf("Invalid left selector: %s", left))
 	}

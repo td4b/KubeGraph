@@ -8,3 +8,15 @@ spec:
     customRequestHeaders:
       X-Auth-Request: "true"
       X-Forwarded-Proto: "https"
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & metadata.name" }}-middleware-errors
+  namespace: {{ .var.namespace }}
+spec:
+  errors:
+    status:
+      - "401-403"
+    service: oauth-backend
+    query: /oauth2/sign_in?rd=https://{{ resource "kind.Ingress.metadata.annotations.kubegraph.managed & spec.rules.0.host" }}
