@@ -59,3 +59,4 @@ jobs:
       - name: Push Docker image
         run: |
           docker push tdub17/kubegraph:${{ github.ref_name }}
+
