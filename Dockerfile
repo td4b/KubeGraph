@@ -11,7 +11,7 @@ COPY . .
 
 # Build the binary
 RUN go mod tidy && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./cmd/kubegraph/. -o /out/kubegraph .
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/kubegraph ./cmd/kubegraph
 
 # ---- Final image ----
 FROM alpine:3.19
