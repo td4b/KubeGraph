@@ -1,4 +1,4 @@
-module KubeGraph
+module github.com/td4b/KubeGraph
 
 go 1.24.4
 

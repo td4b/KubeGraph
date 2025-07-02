@@ -32,15 +32,15 @@ jobs:
 
       - name: Run Go tests
         run: |
-          cd ./src
-          go test
+          cd ./KubeGraph
+          go test -v ./run/
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
           version: latest
           args: release --clean --debug
-          workdir: ./src  
+          workdir: ./KubeGraph/cmd/kubegraph
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

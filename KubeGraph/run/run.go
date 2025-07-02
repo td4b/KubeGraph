@@ -1,8 +1,6 @@
-package main
+package run
 
 import (
-	"KubeGraph/models"
-	"KubeGraph/resolvers"
 	"bytes"
 	"fmt"
 	"io"
@@ -10,9 +8,10 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"github.com/Masterminds/sprig"
+	"github.com/td4b/KubeGraph/models"
+	"github.com/td4b/KubeGraph/resolvers"
+	"gopkg.in/yaml.v2"
 )
 
 func Run(rulesPath, inputPath string, in io.Reader, out io.Writer) error {
@@ -65,26 +64,4 @@ func Run(rulesPath, inputPath string, in io.Reader, out io.Writer) error {
 	}
 
 	return nil
-}
-
-func main() {
-	var rulesPath string
-	var inputPath string
-
-	var rootCmd = &cobra.Command{
-		Use:   "kubegraph",
-		Short: "KubeGraph - Apply rules to Kubernetes YAML",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return Run(rulesPath, inputPath, nil, os.Stdout)
-		},
-	}
-
-	rootCmd.Flags().StringVar(&rulesPath, "rules", "", "Path to the rules.yaml file (required)")
-	rootCmd.Flags().StringVar(&inputPath, "input", "", "Input file or directory if stdin is empty")
-	rootCmd.MarkFlagRequired("rules")
-
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }

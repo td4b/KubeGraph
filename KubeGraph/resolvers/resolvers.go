@@ -1,14 +1,15 @@
 package resolvers
 
 import (
-	"KubeGraph/helpers"
-	"KubeGraph/models"
 	"bytes"
 	"fmt"
 	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/td4b/KubeGraph/helpers"
+	"github.com/td4b/KubeGraph/models"
 
 	"github.com/Masterminds/sprig"
 	"gopkg.in/yaml.v2"
