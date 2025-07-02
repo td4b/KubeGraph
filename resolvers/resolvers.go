@@ -56,7 +56,10 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 				for _, newPath := range rule.NewResources {
 					newResourcePath := filepath.Join(rulesDir, newPath)
 					rawNew, _ := os.ReadFile(newResourcePath)
-
+					fmt.Println("DEBUG RULE PATH")
+					fmt.Println(newResourcePath)
+					fmt.Println("FILEDATA")
+					fmt.Println(string(rawNew))
 					newTmpl, _ := template.New(newPath).
 						Funcs(sprig.TxtFuncMap()).
 						Funcs(template.FuncMap{
