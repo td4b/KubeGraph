@@ -16,7 +16,7 @@ import (
 
 func TestKubeGraph(t *testing.T) {
 	// 🟢 Run the same `kustomize build` as a subprocess
-	cmd := exec.Command("kustomize", "build", "../../ArgoCD/SampleApp/tests/.")
+	cmd := exec.Command("kustomize", "build", "../ArgoCD/SampleApp/tests/.")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatalf("failed to get stdout pipe: %v", err)
@@ -44,7 +44,7 @@ func TestKubeGraph(t *testing.T) {
 	fmt.Println(string(rawInput))
 
 	// 🟢 Load and render the rules template for debug
-	rulesRaw, err := os.ReadFile("../../ArgoCD/SampleApp/rules.yaml")
+	rulesRaw, err := os.ReadFile("../ArgoCD/SampleApp/rules.yaml")
 	if err != nil {
 		t.Fatalf("failed to read rules.yaml: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestKubeGraph(t *testing.T) {
 	for _, rule := range rules.Rules {
 		if rule.InjectFile != "" {
 			fmt.Println("====== RAW injectFile:", rule.InjectFile, "======")
-			data, err := os.ReadFile("../../ArgoCD/SampleApp/" + rule.InjectFile)
+			data, err := os.ReadFile("../ArgoCD/SampleApp/" + rule.InjectFile)
 			if err != nil {
 				t.Fatalf("failed to read injectFile %s: %v", rule.InjectFile, err)
 			}
@@ -89,7 +89,7 @@ func TestKubeGraph(t *testing.T) {
 		// 🟢 If newResources are defined, print each one
 		for _, newPath := range rule.NewResources {
 			fmt.Println("====== RAW newResource:", newPath, "======")
-			data, err := os.ReadFile("../../ArgoCD/SampleApp/" + newPath)
+			data, err := os.ReadFile("../ArgoCD/SampleApp/" + newPath)
 			if err != nil {
 				t.Fatalf("failed to read newResource %s: %v", newPath, err)
 			}
@@ -99,7 +99,7 @@ func TestKubeGraph(t *testing.T) {
 
 	// 🟢 Finally, call Run()
 	var out bytes.Buffer
-	err = Run("../../ArgoCD/SampleApp/rules.yaml", "", bytes.NewReader(rawInput), &out)
+	err = Run("../ArgoCD/SampleApp/rules.yaml", "", bytes.NewReader(rawInput), &out)
 	if err != nil {
 		t.Fatalf("Run() failed: %v", err)
 	}
