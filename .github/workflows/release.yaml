@@ -39,7 +39,7 @@ jobs:
         with:
           version: latest
           args: release --clean --debug
-          workdir: ./KubeGraph/cmd/kubegraph
+          workdir: ./cmd/kubegraph
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
