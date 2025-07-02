@@ -56,10 +56,6 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 				for _, newPath := range rule.NewResources {
 					newResourcePath := filepath.Join(rulesDir, newPath)
 					rawNew, _ := os.ReadFile(newResourcePath)
-					fmt.Println("DEBUG RULE PATH")
-					fmt.Println(newResourcePath)
-					fmt.Println("FILEDATA")
-					fmt.Println(string(rawNew))
 					newTmpl, _ := template.New(newPath).
 						Funcs(sprig.TxtFuncMap()).
 						Funcs(template.FuncMap{
@@ -167,17 +163,17 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 	}
 
 	if len(parts) != 2 {
-		panic(fmt.Sprintf("Invalid resource syntax: %s", input))
+		fmt.Fprintf(os.Stderr, "ERROR: Invalid resource syntax: %s\n", input)
+		os.Exit(1)
 	}
 
 	left := parts[0]
 	right := parts[1]
 
 	leftParts := strings.Split(left, ".")
-
-	// Filter: kind.Ingress.metadata.annotations.kubegraph.managed
 	if len(leftParts) < 4 {
-		panic(fmt.Sprintf("Invalid left selector: %s", left))
+		fmt.Fprintf(os.Stderr, "ERROR: Invalid left selector: %s\n", left)
+		os.Exit(1)
 	}
 
 	kind := leftParts[1]
@@ -185,17 +181,22 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 	mapKey := leftParts[len(leftParts)-2]
 	attrPath := strings.Join(leftParts[2:len(leftParts)-2], ".")
 
+	foundKind := false
+
 	for _, res := range resources {
 		if !strings.EqualFold(res.Kind, kind) {
 			continue
 		}
+		foundKind = true
 
 		val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
 
 		switch m := val.(type) {
 		case map[string]interface{}:
-			if v, ok := m[mapKey]; ok && fmt.Sprintf("%v", v) == mapVal {
-				return helpers.Walk(res.Data, strings.Split(right, "."))
+			if v, ok := m[mapKey]; ok {
+				if fmt.Sprintf("%v", v) == mapVal {
+					return helpers.Walk(res.Data, strings.Split(right, "."))
+				}
 			}
 		case map[interface{}]interface{}:
 			for k, v := range m {
@@ -206,7 +207,46 @@ func ResolveResource(resources []models.Resource, input string) interface{} {
 		}
 	}
 
-	return "<no match>"
+	// Only print debug output if we failed to resolve
+	fmt.Fprintf(os.Stderr, "\n[ResolveResource] Failed to resolve input: %s\n", input)
+	fmt.Fprintf(os.Stderr, "Kind:      %s\n", kind)
+	fmt.Fprintf(os.Stderr, "Attr Path: %s\n", attrPath)
+	fmt.Fprintf(os.Stderr, "Map Key:   %s\n", mapKey)
+	fmt.Fprintf(os.Stderr, "Map Val:   %s\n", mapVal)
+	fmt.Fprintf(os.Stderr, "Right:     %s\n", right)
+
+	if !foundKind {
+		fmt.Fprintf(os.Stderr, "No resources found with kind: %s\n", kind)
+	} else {
+		fmt.Fprintf(os.Stderr, "Resources with matching kind found but filter did not match:\n")
+		for _, res := range resources {
+			if !strings.EqualFold(res.Kind, kind) {
+				continue
+			}
+
+			val := helpers.Walk(res.Data, strings.Split(attrPath, "."))
+			fmt.Fprintf(os.Stderr, "  Resource: kind=%s\n", res.Kind)
+			fmt.Fprintf(os.Stderr, "  Walked Path Value: %#v\n", val)
+
+			switch m := val.(type) {
+			case map[string]interface{}:
+				fmt.Fprintf(os.Stderr, "  Keys:\n")
+				for k, v := range m {
+					fmt.Fprintf(os.Stderr, "    %s: %v\n", k, v)
+				}
+			case map[interface{}]interface{}:
+				fmt.Fprintf(os.Stderr, "  Keys:\n")
+				for k, v := range m {
+					fmt.Fprintf(os.Stderr, "    %v: %v\n", k, v)
+				}
+			default:
+				fmt.Fprintf(os.Stderr, "  Non-map type at path: %#v\n", val)
+			}
+		}
+	}
+
+	os.Exit(1)
+	return nil // unreachable
 }
 
 func LoadInputFromPath(path string) []byte {
