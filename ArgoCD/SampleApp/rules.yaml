@@ -8,7 +8,7 @@ rules:
       metadata:
         annotations:
           kubegraphpatch: "applied"
-    injectFile: "inject-file.yaml"
+    patches: "patch-annotation.yaml"
     newResources:
       - ./render/route.yaml
       - ./render/middleware.yaml

@@ -95,8 +95,8 @@ func BuildGraph(input []byte, rulesDir string, rules models.RulesFile, vars map[
 				}
 
 				// ✅ 3️⃣ inject file AFTER newResources
-				if rule.InjectFile != "" {
-					injectFilePath := filepath.Join(rulesDir, rule.InjectFile)
+				if rule.Patches != "" {
+					injectFilePath := filepath.Join(rulesDir, rule.Patches)
 					fileData, _ := os.ReadFile(injectFilePath)
 
 					injectTmpl, _ := template.New("injectFile").

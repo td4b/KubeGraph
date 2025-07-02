@@ -8,7 +8,7 @@ type Resource struct {
 type Rule struct {
 	Match        map[string]interface{} `yaml:"match"`
 	Inject       map[string]interface{} `yaml:"inject"`
-	InjectFile   string                 `yaml:"injectFile"`
+	Patches      string                 `yaml:"patches"`
 	NewResources []string               `yaml:"newResources"`
 }
 
